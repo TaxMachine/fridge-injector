@@ -1,19 +1,9 @@
 #include <iostream>
-#include <vector>
-#include <string>
-#include <windows.h>
 
 #include "gui.hpp"
 
-
-
-
-void injectDLL(const std::string& dllPath, HANDLE processHandle) {
-
-}
-
-
 int main() {
-    GUI::render();
+    GUI gui;
+    gui.render();
     return 0;
 }

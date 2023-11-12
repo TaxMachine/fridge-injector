@@ -6,10 +6,16 @@
 #define FRIDGE_INJECTOR_INJECTION_HPP
 
 #include <string>
-#include <windows.h>
+#include <vector>
 
 namespace Injection {
-    void inject(std::string dllPath, HANDLE processHandle);
+#ifdef WIN32
+    void inject(const std::string& dllPath, const std::string& windowName);
+    std::vector<std::string> getMinecraftVersions();
+#elifdef __linux__
+    void inject(const std::string& dllPath, const std::string& windowName);
+    std::vector<std::string> getMinecraftVersions();
+#endif
 }
 
 #endif //FRIDGE_INJECTOR_INJECTION_HPP

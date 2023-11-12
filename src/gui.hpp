@@ -5,15 +5,22 @@
 #ifndef FRIDGE_INJECTOR_GUI_HPP
 #define FRIDGE_INJECTOR_GUI_HPP
 
-#include <Windows.h>
+#include <string>
+
+#include "GLFW/glfw3.h"
+#include "config.hpp"
 
 class GUI {
     public:
+        GUI();
         void render();
+        std::string m_version;
+        std::string m_dllPath;
+        Config m_config = Config("config.txt");
     private:
-        HWND createForm();
-        HWND createLabel();
-
-}
+        void renderMain();
+        void renderTitleBar();
+        GLFWwindow* m_window;
+};
 
 #endif //FRIDGE_INJECTOR_GUI_HPP
