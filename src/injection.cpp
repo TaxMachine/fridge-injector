@@ -4,47 +4,61 @@
 
 #include "injection.hpp"
 
-#include <stdexcept>
-#include <windows.h>
 #include <regex>
 
+#include "exceptions.hpp"
 
+#ifdef WIN32
+    #include <windows.h>
+#elif __linux__
+    #include <unistd.h>
+    #include <sys/types.h>
+    #include <sys/wait.h>
+    #include <signal.h>
+#endif
+
+#ifdef WIN32
 static HANDLE getProcessHandleFromWindowName(const std::string& windowName) {
     HWND window = FindWindowA(nullptr, windowName.c_str());
     if (!window) {
-        throw std::invalid_argument("Window not found");
+        throw InjectionException("Window not found");
     }
     DWORD processId;
-    GetWindowThreadProcessId(window, &processId);
-    return OpenProcess(PROCESS_ALL_ACCESS,
-                       FALSE,
-                       processId);
+    if (GetWindowThreadProcessId(window, &processId) == 0) {
+        throw InjectionException("GetWindowThreadProcessId Failed");
+    }
+    return OpenProcess(PROCESS_ALL_ACCESS, FALSE, processId);
 }
+#endif
 
 void Injection::inject(const std::string& dllPath, const std::string& windowName) {
+#ifdef WIN32
     HANDLE processHandle = getProcessHandleFromWindowName(windowName);
     if (!processHandle)
-        throw std::invalid_argument("Process not found");
+        throw InjectionException("Process not found");
 
     LPVOID dllPathAddress = VirtualAllocEx(processHandle,nullptr,dllPath.size() + 1,MEM_COMMIT | MEM_RESERVE,PAGE_READWRITE);
     if (!dllPathAddress)
-        throw std::invalid_argument("VirtualAllocEx Failed");
+        throw InjectionException("VirtualAllocEx Failed");
 
     if (WriteProcessMemory(processHandle,dllPathAddress,dllPath.c_str(),dllPath.size() + 1,nullptr))
-        throw std::invalid_argument("WriteProcessMemory Failed");
+        throw InjectionException("WriteProcessMemory Failed");
 
     HANDLE thread = CreateRemoteThread(processHandle,nullptr,0,(LPTHREAD_START_ROUTINE) LoadLibraryA,dllPathAddress,0,nullptr);
     if (!thread)
-        throw std::invalid_argument("CreateRemoteThread Failed");
+        throw InjectionException("CreateRemoteThread Failed");
 
     if (WaitForSingleObject(thread,INFINITE))
-        throw std::invalid_argument("WaitForSingleObject Failed");
+        throw InjectionException("WaitForSingleObject Failed");
 
     CloseHandle(thread);
     if (VirtualFreeEx(processHandle,dllPathAddress,dllPath.size() + 1,MEM_RELEASE))
-        throw std::invalid_argument("VirtualFreeEx Failed");
+        throw InjectionException("VirtualFreeEx Failed");
 
     CloseHandle(processHandle);
+#elif __linux__
+    throw NotImplementedException("Linux is not supported");
+#endif
 }
 
 static std::vector<std::string> split(std::string str, const std::string& delim) {
@@ -61,6 +75,7 @@ static std::vector<std::string> split(std::string str, const std::string& delim)
 }
 
 std::vector<std::string> Injection::getMinecraftVersions() {
+#ifdef WIN32
     std::vector<std::string> versions;
 
     HWND window = FindWindowA(nullptr, nullptr);
@@ -84,4 +99,7 @@ std::vector<std::string> Injection::getMinecraftVersions() {
     }
 
     return versions;
+#elif __linux__
+    throw NotImplementedException("Linux is not supported");
+#endif
 }

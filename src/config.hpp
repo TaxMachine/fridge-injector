@@ -44,6 +44,7 @@ class Config {
 
         void set(const std::string& key, const std::string& value) {
             this->m_config[key] = value;
+            this->save();
         }
 
     private:

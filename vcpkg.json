@@ -6,9 +6,6 @@
     "name" : "glad",
     "version>=" : "0.1.36"
   }, {
-    "name" : "glm",
-    "version>=" : "2023-06-08"
-  }, {
     "name" : "freetype",
     "version>=" : "2.12.1#4"
   }, {
@@ -17,5 +14,8 @@
   }, {
     "name" : "opengl",
     "version>=" : "2022-12-04#3"
+  }, {
+    "name" : "glm",
+    "version>=" : "2023-06-08"
   } ]
 }

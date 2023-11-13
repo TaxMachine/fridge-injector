@@ -4,15 +4,25 @@
 
 #include "gui.hpp"
 
-#include <string>
-#include <windows.h>
+#include <thread>
 
 #include "imgui.h"
 #include "injection.hpp"
+#include "exceptions.hpp"
 
 #include "backends/imgui_impl_opengl3.h"
 #include "backends/imgui_impl_glfw.h"
 #include "GLFW/glfw3.h"
+
+#ifdef WIN32
+    #include <windows.h>
+#elif __linux__
+    #include <unistd.h>
+    #include <sys/types.h>
+    #include <sys/wait.h>
+    #include <signal.h>
+#endif
+
 
 static void glfw_error_callback(int error, const char* description) {
     fprintf(stderr, "GLFW Error %d: %s\n", error, description);
@@ -39,22 +49,30 @@ static std::string openFileDialog(const char* filetypes) {
 GUI::GUI() {
     this->m_version = "1.20.2";
     this->m_dllPath = this->m_config.get("dllPath");
+    this->m_minecraftVersions = Injection::getMinecraftVersions();
     glfwInit();
 }
 
 void GUI::renderMain() {
     int width, height;
     glfwGetWindowSize(m_window, &width, &height);
-    ImGui::SetWindowSize(ImVec2((float)width, (float)height), ImGuiCond_Always | WS_OVERLAPPEDWINDOW);
-    ImGui::SetWindowPos(ImVec2(0, 0), ImGuiCond_Always);
+    ImGui::SetWindowSize(ImVec2((float)width, ((float)height - this->m_titlebarHeight)), ImGuiCond_Always | WS_OVERLAPPEDWINDOW);
+    ImGui::SetWindowPos(ImVec2(0, this->m_titlebarHeight), ImGuiCond_Always);
     ImGui::SetNextWindowContentSize(ImVec2((float)width, (float)height));
     ImGui::SetWindowFontScale(2.0f);
     ImGui::SetNextWindowSizeConstraints(ImVec2((float)width, (float)height), ImVec2((float)width, (float)height));
     this->renderTitleBar();
+
+    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 15));
+
+    ImGui::BeginGroup();
     ImGui::Text("DLL injector for Minecraft");
+    ImGui::Text("Made by TaxMachine");
+    ImGui::EndGroup();
 
+    ImGui::Separator();
 
-    ImGui::Text("Cheat DLL");
+    ImGui::BeginGroup();
     if (ImGui::Button("Select DLL")) {
         this->m_dllPath = openFileDialog("DLL Files (*.dll)\0*.dll\0");
         if (this->m_dllPath.empty())
@@ -63,25 +81,30 @@ void GUI::renderMain() {
             this->m_config.set("dllPath", this->m_dllPath);
     }
     ImGui::SameLine();
-    ImGui::Text(this->m_dllPath.c_str());
+    ImGui::Text("%s", this->m_dllPath.c_str());
+    ImGui::EndGroup();
 
+    ImGui::Separator();
 
     ImGui::Text("Minecraft version");
-
+    ImGui::BeginGroup();
     if (ImGui::BeginCombo("##version", this->m_version.c_str())) {
-        std::vector <std::string> versions = Injection::getMinecraftVersions();
-        if (versions.empty()) {
+
+        if (m_minecraftVersions.empty()) {
             ImGui::Text("No Minecraft windows found");
         }
-        for (const std::string &version: Injection::getMinecraftVersions()) {
+        for (const std::string &version: m_minecraftVersions) {
             if (ImGui::Selectable(version.c_str())) {
                 this->m_version = version;
             }
         }
         ImGui::EndCombo();
     }
+    ImGui::EndGroup();
 
+    ImGui::Separator();
 
+    ImGui::BeginGroup();
     if (ImGui::Button("Inject")) {
         if (this->m_dllPath.empty()) {
             ImGui::BeginPopupModal("Error", nullptr, ImGuiWindowFlags_AlwaysAutoResize);
@@ -93,13 +116,23 @@ void GUI::renderMain() {
                 ImGui::Text("Injecting...");
                 ImGui::EndPopup();
                 //Injection::inject(this->m_dllPath, "Minecraft " + this->m_version);
-            } catch (std::invalid_argument& e) {
+            } catch (InjectionException& e) {
                 ImGui::BeginPopupModal("Error", nullptr, ImGuiWindowFlags_AlwaysAutoResize);
-                ImGui::Text(e.what());
+                ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(1.0f, 0.0f, 0.0f, 1.0));
+                ImGui::Text("%s", e.what());
+                ImGui::PopStyleColor();
+                ImGui::EndPopup();
+            } catch (NotImplementedException& e) {
+                ImGui::BeginPopupModal("Error", nullptr, ImGuiWindowFlags_AlwaysAutoResize);
+                ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(1.0f, 0.0f, 0.0f, 1.0));
+                ImGui::Text("%s", e.what());
+                ImGui::PopStyleColor();
                 ImGui::EndPopup();
             }
         }
     }
+    ImGui::EndGroup();
+    ImGui::PopStyleVar();
 }
 
 void GUI::render() {
@@ -107,7 +140,7 @@ void GUI::render() {
     glfwWindowHint(GLFW_TRANSPARENT_FRAMEBUFFER, GLFW_TRUE);
     if (!glfwInit())
         return;
-    m_window = glfwCreateWindow(600, 500, "fridge injector", nullptr, nullptr);
+    m_window = glfwCreateWindow(700, 600, "fridge injector", nullptr, nullptr);
     if (m_window == nullptr)
         return;
     glfwMakeContextCurrent(m_window);
@@ -147,6 +180,7 @@ void GUI::render() {
 
 void GUI::renderTitleBar() {
     ImGui::BeginMainMenuBar();
+    this->m_titlebarHeight = ImGui::GetFrameHeight();
     if (ImGui::BeginMenu("File")) {
         if (ImGui::MenuItem("Open")) {
             this->m_dllPath = openFileDialog("DLL Files (*.dll)\0*.dll\0");
