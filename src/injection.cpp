@@ -7,6 +7,7 @@
 #include <regex>
 
 #include "exceptions.hpp"
+#include "utils.hpp"
 
 #ifdef WIN32
     #include <windows.h>
@@ -59,19 +60,6 @@ void Injection::inject(const std::string& dllPath, const std::string& windowName
 #elif __linux__
     throw NotImplementedException("Linux is not supported");
 #endif
-}
-
-static std::vector<std::string> split(std::string str, const std::string& delim) {
-    std::vector<std::string> split;
-    size_t pos = 0;
-    std::string token;
-    while ((pos = str.find(delim)) != std::string::npos) {
-        token = str.substr(0, pos);
-        split.push_back(token);
-        str.erase(0, pos + delim.length());
-    }
-    split.push_back(str);
-    return split;
 }
 
 std::vector<std::string> Injection::getMinecraftVersions() {
