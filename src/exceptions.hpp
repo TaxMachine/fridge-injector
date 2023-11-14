@@ -7,7 +7,7 @@
 
 #include <stdexcept>
 
-class InjectionException : public std::runtime_error {
+class InjectionException final : public std::runtime_error {
     public:
         explicit InjectionException(const std::string& message) : std::runtime_error(message) {}
 
@@ -20,7 +20,7 @@ class InjectionException : public std::runtime_error {
         }
 };
 
-class ConfigException : public std::runtime_error {
+class ConfigException final : public std::runtime_error {
     public:
         explicit ConfigException(const std::string& message) : std::runtime_error(message) {}
 
@@ -33,7 +33,7 @@ class ConfigException : public std::runtime_error {
         }
 };
 
-class NotImplementedException : public std::runtime_error {
+class NotImplementedException final : public std::runtime_error {
     public:
         explicit NotImplementedException(const std::string& message) : std::runtime_error(message) {}
 

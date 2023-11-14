@@ -8,9 +8,15 @@
 #include <string>
 #include <vector>
 
+struct MCInstance {
+    std::string title;
+    int pid;
+    std::string javawPath;
+};
+
 namespace Injection {
     void inject(const std::string& dllPath, const std::string& windowName);
-    std::vector<std::string> getMinecraftVersions();
+    std::vector<MCInstance> getMinecraftVersions();
 }
 
 #endif //FRIDGE_INJECTOR_INJECTION_HPP

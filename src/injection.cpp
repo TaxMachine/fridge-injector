@@ -11,6 +11,7 @@
 
 #ifdef WIN32
     #include <windows.h>
+    #include <psapi.h>
 #elif __linux__
     #include <unistd.h>
     #include <sys/types.h>
@@ -62,12 +63,13 @@ void Injection::inject(const std::string& dllPath, const std::string& windowName
 #endif
 }
 
-std::vector<std::string> Injection::getMinecraftVersions() {
+std::vector<MCInstance> Injection::getMinecraftVersions() {
 #ifdef WIN32
-    std::vector<std::string> versions;
+    std::vector<MCInstance> versions;
 
     HWND window = FindWindowA(nullptr, nullptr);
     while (window) {
+        MCInstance instance;
         char title[256];
         GetWindowTextA(window, title, 256);
         std::string titleString = title;
@@ -81,7 +83,12 @@ std::vector<std::string> Injection::getMinecraftVersions() {
             if (std::stoi(splitVersion[1]) <= 12)
                 continue;
 
-            versions.push_back(version);
+            instance.title = titleString;
+            instance.pid = GetWindowThreadProcessId(window, nullptr);
+            std::string javawPath{};
+            GetProcessImageFileNameA(OpenProcess(PROCESS_QUERY_INFORMATION, FALSE, instance.pid), (LPSTR)javawPath.c_str(), 256);
+            instance.javawPath = javawPath;
+            versions.push_back(instance);
         }
         window = GetWindow(window, GW_HWNDNEXT);
     }

@@ -7,22 +7,23 @@
 
 #include <string>
 #include <vector>
+#include <filesystem>
 
 #include "GLFW/glfw3.h"
 #include "config.hpp"
+#include "injection.hpp"
 
 class GUI {
     public:
         GUI();
         void render();
-        std::string m_version;
-        std::string m_dllPath;
+        MCInstance m_version;
+        std::filesystem::path m_dllPath;
         Config m_config = Config("config.txt");
     private:
         void renderMain();
-        void renderTitleBar();
         GLFWwindow* m_window{};
-        std::vector<std::string> m_minecraftVersions;
+        std::vector<MCInstance> m_minecraftVersions;
         bool m_alreadySeen = false;
         const char* m_dllhash = "Not Available";
         unsigned long long m_dllsize = 0.0f;

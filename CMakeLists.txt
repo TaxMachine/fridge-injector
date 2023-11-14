@@ -36,4 +36,5 @@ target_link_libraries(fridge_injector PRIVATE
         glfw
         glm::glm
         opengl32
+        psapi
 )

@@ -31,12 +31,7 @@ static void glfw_error_callback(int error, const char* description) {
     fprintf(stderr, "GLFW Error %d: %s\n", error, description);
 }
 
-static void moveBothImGuiAndGLFWWindows(GLFWwindow* window, int x, int y) {
-    ImGui::SetWindowPos(ImVec2((float)x, (float)y));
-    glfwSetWindowPos(window, x, y);
-}
-
-static std::string openFileDialog(const char* filetypes) {
+static std::filesystem::path openFileDialog(const char* filetypes) {
     OPENFILENAMEA ofn;
     CHAR szFile[260] = {0};
     ZeroMemory(&ofn, sizeof(ofn));
@@ -51,7 +46,7 @@ static std::string openFileDialog(const char* filetypes) {
     ofn.lpstrInitialDir = nullptr;
     ofn.Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST;
     GetOpenFileNameA(&ofn);
-    return ofn.lpstrFile;
+    return std::filesystem::absolute(ofn.lpstrFile);
 }
 
 static void ErrorPopup(const char* message) {
@@ -75,12 +70,12 @@ GUI::GUI() {
 
 void GUI::renderMain() {
     ImGui::Begin("Fridge Injector", nullptr, ImGuiWindowFlags_NoResize |
-                                                                ImGuiWindowFlags_NoCollapse |
-                                                                ImGuiWindowFlags_NoMove |
-                                                                ImGuiWindowFlags_NoSavedSettings |
-                                                                ImGuiWindowFlags_NoBringToFrontOnFocus |
-                                                                ImGuiWindowFlags_NoNavFocus |
-                                                                ImGuiWindowFlags_NoDocking);
+                                                            ImGuiWindowFlags_NoCollapse |
+                                                            ImGuiWindowFlags_NoMove |
+                                                            ImGuiWindowFlags_NoSavedSettings |
+                                                            ImGuiWindowFlags_NoBringToFrontOnFocus |
+                                                            ImGuiWindowFlags_NoNavFocus |
+                                                            ImGuiWindowFlags_NoDocking);
     int width, height;
     glfwGetWindowSize(m_window, &width, &height);
     ImGui::SetWindowSize(ImVec2((float)width, ((float)height - this->m_titlebarHeight)), ImGuiCond_Always);
@@ -106,19 +101,19 @@ void GUI::renderMain() {
         if (this->m_dllPath.empty())
             this->m_dllPath = "No DLL selected";
         if (this->m_config.get("dllPath") != this->m_dllPath) {
-            this->m_config.set("dllPath", this->m_dllPath);
+            this->m_config.set("dllPath", this->m_dllPath.string());
             this->m_alreadySeen = false;
         }
     }
     ImGui::SameLine();
     ImGui::Dummy(ImVec2(25.0f, 0.0f));
-    ImGui::Text("Filename: %s", split(this->m_dllPath, SEPARATOR)[split(this->m_dllPath, SEPARATOR).size() - 1].c_str());
+    ImGui::Text("Filename: %s", this->m_dllPath.filename().string().c_str());
     if (!this->m_dllPath.empty()) {
         if (!this->m_alreadySeen) {
-            this->m_dllhash = sha1(this->m_dllPath).c_str();
+            this->m_dllhash = sha1(this->m_dllPath.string()).c_str();
             this->m_dllsize = std::filesystem::file_size(this->m_dllPath) / 1024;
-            this->m_dllclientname = findDllSymbol(this->m_dllPath, "CLIENT").c_str();
-            this->m_dllversion = findDllSymbol(this->m_dllPath, "VERSION").c_str();
+            this->m_dllclientname = findDllSymbol(this->m_dllPath.string(), "CLIENT").c_str();
+            this->m_dllversion = findDllSymbol(this->m_dllPath.string(), "VERSION").c_str();
             this->m_alreadySeen = true;
         }
         ImGui::Text("Sha1: %s", this->m_dllhash);
@@ -132,13 +127,13 @@ void GUI::renderMain() {
 
     ImGui::Text("Minecraft version");
     ImGui::BeginGroup();
-    if (ImGui::BeginCombo("##version", this->m_version.c_str())) {
+    if (ImGui::BeginCombo("##version", this->m_version.title.c_str())) {
 
         if (this->m_minecraftVersions.empty()) {
             ImGui::Text("No Minecraft windows found");
         }
-        for (const std::string &version: this->m_minecraftVersions) {
-            if (ImGui::Selectable(version.c_str())) {
+        for (const MCInstance &version: this->m_minecraftVersions) {
+            if (ImGui::Selectable(version.title.c_str())) {
                 this->m_version = version;
             }
         }
@@ -161,17 +156,17 @@ void GUI::renderMain() {
     if (ImGui::Button("Inject")) {
         if (this->m_dllPath.empty()) {
             ErrorPopup("No DLL selected");
-        } else if (this->m_version.empty()) {
+        } else if (this->m_version.title.empty() || this->m_version.pid == 0 || this->m_version.javawPath.empty()) {
             ErrorPopup("No Minecraft version selected");
         } else {
             try {
                 ImGui::BeginPopupModal("Injecting", nullptr, ImGuiWindowFlags_AlwaysAutoResize);
                 ImGui::ProgressBar(0.0f, ImVec2(0.0f, 0.0f));
-                int injected;
+                bool injected = false;
                 while (!injected) {
                     try {
                         //Injection::inject(this->m_dllPath, this->m_version);
-                        injected = 1;
+                        injected = true;
                         ImGui::ProgressBar(1.0f, ImVec2(0.0f, 0.0f));
                         if (ImGui::Button("OK")) {
                             ImGui::EndPopup();
