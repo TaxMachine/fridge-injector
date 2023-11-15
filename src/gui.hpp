@@ -17,7 +17,7 @@ class GUI {
     public:
         GUI();
         void render();
-        MCInstance m_version;
+        MCInstance m_version{};
         std::filesystem::path m_dllPath;
         Config m_config = Config("config.txt");
     private:
@@ -26,9 +26,7 @@ class GUI {
         std::vector<MCInstance> m_minecraftVersions;
         bool m_alreadySeen = false;
         const char* m_dllhash = "Not Available";
-        unsigned long long m_dllsize = 0.0f;
-        const char* m_dllversion = "Not Available";
-        const char* m_dllclientname = "Not Available";
+        unsigned long long m_dllsize = 0.0L;
 
         float m_titlebarHeight = 0;
 };

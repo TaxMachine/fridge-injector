@@ -21,41 +21,61 @@
 
 #ifdef WIN32
 static HANDLE getProcessHandleFromWindowName(const std::string& windowName) {
-    HWND window = FindWindowA(nullptr, windowName.c_str());
+    const HWND& window = FindWindowA(nullptr, windowName.c_str());
     if (!window) {
         throw InjectionException("Window not found");
     }
     DWORD processId;
-    if (GetWindowThreadProcessId(window, &processId) == 0) {
-        throw InjectionException("GetWindowThreadProcessId Failed");
-    }
+    GetWindowThreadProcessId(window, &processId) ?
+        throw InjectionException("GetWindowThreadProcessId Failed") : 0;
+
     return OpenProcess(PROCESS_ALL_ACCESS, FALSE, processId);
 }
 #endif
 
 void Injection::inject(const std::string& dllPath, const std::string& windowName) {
 #ifdef WIN32
-    HANDLE processHandle = getProcessHandleFromWindowName(windowName);
+    const HANDLE& processHandle = getProcessHandleFromWindowName(windowName);
     if (!processHandle)
         throw InjectionException("Process not found");
 
-    LPVOID dllPathAddress = VirtualAllocEx(processHandle,nullptr,dllPath.size() + 1,MEM_COMMIT | MEM_RESERVE,PAGE_READWRITE);
+    const LPVOID& dllPathAddress = VirtualAllocEx(
+        processHandle,
+        nullptr,
+        dllPath.size() + 1,
+        MEM_COMMIT | MEM_RESERVE,
+        PAGE_READWRITE);
+
     if (!dllPathAddress)
         throw InjectionException("VirtualAllocEx Failed");
 
-    if (WriteProcessMemory(processHandle,dllPathAddress,dllPath.c_str(),dllPath.size() + 1,nullptr))
-        throw InjectionException("WriteProcessMemory Failed");
+    WriteProcessMemory(
+        processHandle,
+        dllPathAddress,
+        dllPath.c_str(),
+        dllPath.size() + 1,
+        nullptr) == FALSE ?
+            throw InjectionException("WriteProcessMemory Failed") : 0;
 
-    HANDLE thread = CreateRemoteThread(processHandle,nullptr,0,(LPTHREAD_START_ROUTINE) LoadLibraryA,dllPathAddress,0,nullptr);
+    const HANDLE& thread = CreateRemoteThread(
+        processHandle,
+        nullptr,
+        0,
+        (LPTHREAD_START_ROUTINE)LoadLibraryA,
+        dllPathAddress,
+        0,
+        nullptr);
+
     if (!thread)
         throw InjectionException("CreateRemoteThread Failed");
 
-    if (WaitForSingleObject(thread,INFINITE))
-        throw InjectionException("WaitForSingleObject Failed");
+    WaitForSingleObject(thread,INFINITE) == WAIT_FAILED ?
+        throw InjectionException("WaitForSingleObject Failed") : 0;
 
     CloseHandle(thread);
-    if (VirtualFreeEx(processHandle,dllPathAddress,dllPath.size() + 1,MEM_RELEASE))
-        throw InjectionException("VirtualFreeEx Failed");
+
+    VirtualFreeEx(processHandle,dllPathAddress,dllPath.size() + 1,MEM_RELEASE) == FALSE ?
+        throw InjectionException("VirtualFreeEx Failed") : 0;
 
     CloseHandle(processHandle);
 #elif __linux__
@@ -69,24 +89,38 @@ std::vector<MCInstance> Injection::getMinecraftVersions() {
 
     HWND window = FindWindowA(nullptr, nullptr);
     while (window) {
-        MCInstance instance;
         char title[256];
         GetWindowTextA(window, title, 256);
-        std::string titleString = title;
-        if (titleString.find("Minecraft ") != std::string::npos) {
+        if (std::string{title}.find("Minecraft ") != std::string::npos) {
+            std::string titleString{title};
             std::regex regex("Minecraft ([0-9]+\\.[0-9]+\\.[0-9]+)");
             std::smatch match;
             std::regex_search(titleString, match, regex);
-            std::string version = match[1];
 
-            std::vector<std::string> splitVersion = split(version, ".");
-            if (std::stoi(splitVersion[1]) <= 12)
+            if (std::stoi(Utils::split(match[1].str(), ".")[1]) <= 12)
                 continue;
 
+            MCInstance instance;
             instance.title = titleString;
-            instance.pid = GetWindowThreadProcessId(window, nullptr);
+            DWORD processId;
+            GetWindowThreadProcessId(window, &processId) ?
+                throw InjectionException("GetWindowThreadProcessId Failed") : 0;
+            instance.pid = static_cast<int>(processId);
             std::string javawPath{};
-            GetProcessImageFileNameA(OpenProcess(PROCESS_QUERY_INFORMATION, FALSE, instance.pid), (LPSTR)javawPath.c_str(), 256);
+            const HANDLE& proc = OpenProcess(
+            PROCESS_QUERY_INFORMATION,
+            FALSE,
+            instance.pid);
+
+            if (!proc)
+                throw InjectionException("OpenProcess Failed");
+
+            GetProcessImageFileNameA(
+                proc,
+                javawPath.data(),
+                256) == FALSE ?
+                    throw InjectionException("GetProcessImageFileNameA Failed") : 0;
+
             instance.javawPath = javawPath;
             versions.push_back(instance);
         }

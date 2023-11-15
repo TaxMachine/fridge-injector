@@ -31,24 +31,6 @@ static void glfw_error_callback(int error, const char* description) {
     fprintf(stderr, "GLFW Error %d: %s\n", error, description);
 }
 
-static std::filesystem::path openFileDialog(const char* filetypes) {
-    OPENFILENAMEA ofn;
-    CHAR szFile[260] = {0};
-    ZeroMemory(&ofn, sizeof(ofn));
-    ofn.lStructSize = sizeof(ofn);
-    ofn.hwndOwner = nullptr;
-    ofn.lpstrFile = szFile;
-    ofn.nMaxFile = sizeof(szFile);
-    ofn.lpstrFilter = filetypes;
-    ofn.nFilterIndex = 1;
-    ofn.lpstrFileTitle = nullptr;
-    ofn.nMaxFileTitle = 0;
-    ofn.lpstrInitialDir = nullptr;
-    ofn.Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST;
-    GetOpenFileNameA(&ofn);
-    return std::filesystem::absolute(ofn.lpstrFile);
-}
-
 static void ErrorPopup(const char* message) {
     ImGui::BeginPopupModal("Error", nullptr, ImGuiWindowFlags_AlwaysAutoResize |
                                                                 ImGuiWindowFlags_ChildWindow |
@@ -78,11 +60,11 @@ void GUI::renderMain() {
                                                             ImGuiWindowFlags_NoDocking);
     int width, height;
     glfwGetWindowSize(m_window, &width, &height);
-    ImGui::SetWindowSize(ImVec2((float)width, ((float)height - this->m_titlebarHeight)), ImGuiCond_Always);
+    ImGui::SetWindowSize(ImVec2(static_cast<float>(width), (static_cast<float>(height) - this->m_titlebarHeight)), ImGuiCond_Always);
     ImGui::SetWindowPos(ImVec2(0, 0), ImGuiCond_Always);
-    ImGui::SetNextWindowContentSize(ImVec2((float)width, (float)height));
+    ImGui::SetNextWindowContentSize(ImVec2(static_cast<float>(width), static_cast<float>(height)));
     ImGui::SetWindowFontScale(2.0f);
-    ImGui::SetNextWindowSizeConstraints(ImVec2((float)width, (float)height), ImVec2((float)width, (float)height));
+    ImGui::SetNextWindowSizeConstraints(ImVec2(static_cast<float>(width), static_cast<float>(height)), ImVec2(static_cast<float>(width), static_cast<float>(height)));
 
     ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 15));
     ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 15);
@@ -97,10 +79,14 @@ void GUI::renderMain() {
     ImGui::BeginGroup();
 
     if (ImGui::Button("Select DLL")) {
-        this->m_dllPath = openFileDialog("DLL Files (*.dll)\0*.dll\0");
+        const std::vector<Utils::FileFilter>& filters = {
+            Utils::FileFilter{"DLL Files", {"*.dll"}},
+            Utils::FileFilter{"SO Files", {"*.so"}}
+        };
+        this->m_dllPath = Utils::openFileDialog(filters);
         if (this->m_dllPath.empty())
             this->m_dllPath = "No DLL selected";
-        if (this->m_config.get("dllPath") != this->m_dllPath) {
+        else {
             this->m_config.set("dllPath", this->m_dllPath.string());
             this->m_alreadySeen = false;
         }
@@ -110,16 +96,12 @@ void GUI::renderMain() {
     ImGui::Text("Filename: %s", this->m_dllPath.filename().string().c_str());
     if (!this->m_dllPath.empty()) {
         if (!this->m_alreadySeen) {
-            this->m_dllhash = sha1(this->m_dllPath.string()).c_str();
+            this->m_dllhash = Utils::sha1(this->m_dllPath.string()).c_str();
             this->m_dllsize = std::filesystem::file_size(this->m_dllPath) / 1024;
-            this->m_dllclientname = findDllSymbol(this->m_dllPath.string(), "CLIENT").c_str();
-            this->m_dllversion = findDllSymbol(this->m_dllPath.string(), "VERSION").c_str();
             this->m_alreadySeen = true;
         }
         ImGui::Text("Sha1: %s", this->m_dllhash);
         ImGui::Text("Size: %f kb", this->m_dllsize);
-        ImGui::Text("Client name: %s", this->m_dllclientname);
-        ImGui::Text("Client version: %s", this->m_dllversion);
     }
     ImGui::EndGroup();
 

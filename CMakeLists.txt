@@ -31,6 +31,8 @@ add_executable(fridge_injector
         ${IMGUI_DIR}/backends/imgui_impl_opengl3.cpp
 )
 
+target_sources(fridge_injector PRIVATE assets/resource.rc)
+
 target_link_libraries(fridge_injector PRIVATE
         freetype
         glfw
