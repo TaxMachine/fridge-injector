@@ -14,12 +14,8 @@
 
 #include "exceptions.hpp"
 
-std::filesystem::path Utils::openFileDialog(const std::vector<FileFilter>& filters) {
+std::filesystem::path Utils::openFileDialog(const char* filters) {
 #ifdef WIN32
-    std::string strFilter{};
-    for (const auto& filter : filters) {
-        strFilter += filter.createFilter() + '\0';
-    }
     OPENFILENAMEA ofn;
     std::string szFile;
     ZeroMemory(&ofn, sizeof(ofn));
@@ -27,47 +23,20 @@ std::filesystem::path Utils::openFileDialog(const std::vector<FileFilter>& filte
     ofn.hwndOwner = nullptr;
     ofn.lpstrFile = szFile.data();
     ofn.nMaxFile = szFile.size();
-    ofn.lpstrFilter = strFilter.c_str();
+    ofn.lpstrFilter = filters;
     ofn.nFilterIndex = 1;
     ofn.lpstrFileTitle = nullptr;
     ofn.nMaxFileTitle = 0;
     ofn.lpstrInitialDir = nullptr;
     ofn.Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST;
     GetOpenFileNameA(&ofn);
-    return std::filesystem::absolute(ofn.lpstrFile);
+    return std::filesystem::absolute(std::string{ofn.lpstrFile});
 #elif __linux__
     std::string filename;
-    FILE *f = popen("zenity --file-selection", "r");
+    FILE *f = popen("zenity --file-selection --title \"Select your cheat shared library\"", "r");
     fgets(filename.data(), filename.size(), f);
     pclose(f);
     return std::filesystem::absolute(filename);
-
-#endif
-}
-
-std::string Utils::findDllSymbol(const std::string& dllPath, const std::string& symbol) {
-#ifdef WIN32
-
-    HMODULE dll = LoadLibrary(dllPath.c_str());
-    if (dll == nullptr)
-        return "Failed to load dll";
-    FARPROC proc = GetProcAddress(dll, symbol.c_str());
-    if (proc == nullptr)
-        return "Failed to find symbol";
-    auto* (*getExportedSymbol)() = reinterpret_cast<const char*(*)()>(proc);
-    return {getExportedSymbol()};
-
-#elif __linux__
-
-    void *dll = dlopen(dllPath.c_str(), RTLD_LAZY);
-    if (!dll)
-        return "Failed to load shared library";
-    void *proc = dlsym(dll, symbol.c_str());
-    if (!proc)
-        return "Failed to find symbol";
-    auto* (*getExportedSymbol)() = (const char*(*)()) proc;
-    dlclose(dll);
-    return getExportedSymbol();
 
 #endif
 }

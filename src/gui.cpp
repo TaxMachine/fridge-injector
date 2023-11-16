@@ -57,7 +57,8 @@ void GUI::renderMain() {
                                                             ImGuiWindowFlags_NoSavedSettings |
                                                             ImGuiWindowFlags_NoBringToFrontOnFocus |
                                                             ImGuiWindowFlags_NoNavFocus |
-                                                            ImGuiWindowFlags_NoDocking);
+                                                            ImGuiWindowFlags_NoDocking |
+                                                            ImGuiWindowFlags_NoSavedSettings);
     int width, height;
     glfwGetWindowSize(m_window, &width, &height);
     ImGui::SetWindowSize(ImVec2(static_cast<float>(width), (static_cast<float>(height) - this->m_titlebarHeight)), ImGuiCond_Always);
@@ -79,12 +80,8 @@ void GUI::renderMain() {
     ImGui::BeginGroup();
 
     if (ImGui::Button("Select DLL")) {
-        const std::vector<Utils::FileFilter>& filters = {
-            Utils::FileFilter{"DLL Files", {"*.dll"}},
-            Utils::FileFilter{"SO Files", {"*.so"}}
-        };
-        this->m_dllPath = Utils::openFileDialog(filters);
-        if (this->m_dllPath.empty())
+        this->m_dllPath = Utils::openFileDialog("DLL files (*.dll)\0*.dll\0");
+        if (this->m_dllPath.empty() || this->m_dllPath.extension() != ".dll" || this->m_dllPath.extension() != ".so")
             this->m_dllPath = "No DLL selected";
         else {
             this->m_config.set("dllPath", this->m_dllPath.string());
@@ -109,6 +106,7 @@ void GUI::renderMain() {
 
     ImGui::Text("Minecraft version");
     ImGui::BeginGroup();
+
     if (ImGui::BeginCombo("##version", this->m_version.title.c_str())) {
 
         if (this->m_minecraftVersions.empty()) {
