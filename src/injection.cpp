@@ -4,6 +4,7 @@
 
 #include "injection.hpp"
 
+#include <any>
 #include <regex>
 
 #include "exceptions.hpp"
@@ -36,7 +37,7 @@ static HANDLE getProcessHandleFromWindowName(const std::string& windowName) {
 void Injection::inject(const std::string& dllPath, const unsigned long& pid) {
 #ifdef WIN32
     const HANDLE& processHandle = OpenProcess(PROCESS_ALL_ACCESS, FALSE, pid);
-    if (!processHandle)
+    if (processHandle == nullptr)
         throw InjectionException("Process not found");
 
     const LPVOID& dllPathAddress = VirtualAllocEx(
@@ -44,9 +45,9 @@ void Injection::inject(const std::string& dllPath, const unsigned long& pid) {
         nullptr,
         dllPath.size() + 1,
         MEM_COMMIT | MEM_RESERVE,
-        PAGE_READWRITE);
+        PAGE_EXECUTE_READWRITE);
 
-    if (!dllPathAddress)
+    if (dllPathAddress == nullptr)
         throw InjectionException("VirtualAllocEx Failed");
 
     WriteProcessMemory(
@@ -57,25 +58,24 @@ void Injection::inject(const std::string& dllPath, const unsigned long& pid) {
         nullptr) == FALSE ?
             throw InjectionException("WriteProcessMemory Failed") : 0;
 
+    const auto& loadLibraryAddress = GetProcAddress(GetModuleHandleA("kernel32.dll"), "LoadLibraryA");
+    if (loadLibraryAddress == nullptr)
+        throw InjectionException("GetProcAddress Failed");
+
     const HANDLE& thread = CreateRemoteThread(
         processHandle,
         nullptr,
         0,
-        (LPTHREAD_START_ROUTINE)LoadLibraryA,
+        std::any_cast<LPTHREAD_START_ROUTINE>(loadLibraryAddress),
         dllPathAddress,
         0,
         nullptr);
 
-    if (!thread)
+    if (thread == nullptr)
         throw InjectionException("CreateRemoteThread Failed");
 
     WaitForSingleObject(thread,INFINITE) == WAIT_FAILED ?
         throw InjectionException("WaitForSingleObject Failed") : 0;
-
-    CloseHandle(thread);
-
-    VirtualFreeEx(processHandle,dllPathAddress,dllPath.size() + 1,MEM_RELEASE) == FALSE ?
-        throw InjectionException("VirtualFreeEx Failed") : 0;
 
     CloseHandle(processHandle);
 #elif __linux__

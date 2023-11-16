@@ -40,31 +40,6 @@ std::string Utils::openFileDialog(const char* filters) {
 #endif
 }
 
-std::string Utils::sha1(const std::string& path) {
-#ifdef WIN32
-    std::string command = "certutil.exe -hashfile " + path + " SHA1";
-    FILE* file = _popen(command.c_str(), "r");
-#elif __linux__
-    std::string command = "sha256sum " + path;
-    FILE* file = popen(command.c_str(), "r");
-#endif
-    if (!file)
-        return "Failed to open file";
-
-    char buffer[128];
-    std::string output;
-    while (fgets(buffer, sizeof(buffer), file) != nullptr)
-        output += buffer;
-
-#ifdef WIN32
-    _pclose(file);
-    return split(output, "\n")[1];
-#elif __linux__
-    pclose(file);
-    return split(output, " ")[0];
-#endif
-}
-
 std::vector<std::string> Utils::split(std::string str, const std::string& delim) {
     std::vector<std::string> split;
     size_t pos;

@@ -21,7 +21,6 @@
 
 namespace Utils {
     std::vector<std::string> split(std::string str, const std::string& delim);
-    std::string sha1(const std::string& path);
     std::string openFileDialog(const char* filters);
     unsigned long getFileSize(const std::string& path);
 }

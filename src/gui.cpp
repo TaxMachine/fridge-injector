@@ -11,6 +11,7 @@
 #include "injection.hpp"
 #include "exceptions.hpp"
 #include "utils.hpp"
+#include "sha1.hpp"
 
 #include "backends/imgui_impl_opengl3.h"
 #include "backends/imgui_impl_glfw.h"
@@ -79,7 +80,7 @@ void GUI::renderMain() {
 
     if (ImGui::Button("Select DLL")) {
         try {
-            std::string libpath = Utils::openFileDialog("DLL file (*.dll)\0*.dll\0");
+            const auto& libpath = Utils::openFileDialog("DLL file (*.dll)\0*.dll\0");
             if (libpath.empty() || !(libpath.ends_with(".dll") || libpath.ends_with(".so")))
                 ErrorPopup("No shared library selected");
             else {
@@ -94,12 +95,12 @@ void GUI::renderMain() {
     ImGui::SameLine();
     ImGui::Dummy(ImVec2(25.0f, 0.0f));
     try {
-        const std::string& path = !this->m_config.get("dllPath").empty() ? this->m_config.get("dllPath").c_str() : "Not selected";
-        const std::vector<std::string>& split = Utils::split(path, SEPARATOR);
+        const std::string& pathdll = !this->m_config.get("dllPath").empty() ? this->m_config.get("dllPath").c_str() : "Not selected";
+        const std::vector<std::string>& split = Utils::split(pathdll, SEPARATOR);
         ImGui::Text("Filename: %s", split[split.size() - 1].c_str());
         if (!this->m_dllPath.empty()) {
             if (!this->m_alreadySeen) {
-                this->m_dllhash = Utils::sha1(this->m_dllPath).c_str();
+                this->m_dllhash = SHA1::from_file(this->m_dllPath).c_str();
                 this->m_dllsize = Utils::getFileSize(this->m_dllPath) / 1024;
                 this->m_alreadySeen = true;
             }
@@ -116,12 +117,7 @@ void GUI::renderMain() {
     ImGui::Text("Minecraft version");
     ImGui::BeginGroup();
 
-    if (ImGui::BeginCombo("##version", !this->m_version.title.empty()
-                                                        ? (this->m_version.title + " pid: " + std::to_string(this->m_version.pid)).c_str()
-                                                        : this->m_minecraftVersions.empty()
-                                                            ? "Select Version"
-                                                            : (this->m_minecraftVersions[0].title + " pid: " + std::to_string(this->m_minecraftVersions[0].pid)).c_str())) {
-
+    if (ImGui::BeginCombo("##version", "Select a DLL")) {
         if (this->m_minecraftVersions.empty()) {
             ImGui::Selectable("No Minecraft windows found");
         }
