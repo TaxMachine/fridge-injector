@@ -10,12 +10,11 @@
 
 struct MCInstance {
     std::string title;
-    int pid;
-    std::string javawPath;
+    unsigned long pid;
 };
 
 namespace Injection {
-    void inject(const std::string& dllPath, const std::string& windowName);
+    void inject(const std::string& dllPath, const unsigned long& pid);
     std::vector<MCInstance> getMinecraftVersions();
 }
 

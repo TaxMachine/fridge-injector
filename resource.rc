@@ -34,4 +34,4 @@ BEGIN
     END
 END
 
-IDI_MYICON ICON "fridge.ico"
+IDI_MYICON ICON "assets\\fridge.ico"

@@ -31,12 +31,27 @@ add_executable(fridge_injector
         ${IMGUI_DIR}/backends/imgui_impl_opengl3.cpp
 )
 
-target_sources(fridge_injector PRIVATE assets/resource.rc)
+if (WIN32)
+    target_sources(fridge_injector PRIVATE ${CMAKE_SOURCE_DIR}/resource.rc)
+    set(libs
+            psapi
+            opengl32
+    )
+elseif (UNIX)
+    set(libs
+            GL
+            dl
+            pthread
+    )
+endif ()
 
 target_link_libraries(fridge_injector PRIVATE
         freetype
         glfw
         glm::glm
-        opengl32
-        psapi
+        ${libs}
 )
+
+add_custom_command(TARGET fridge_injector POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+        ${CMAKE_SOURCE_DIR}/assets $<TARGET_FILE_DIR:fridge_injector>/assets)

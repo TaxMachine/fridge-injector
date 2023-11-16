@@ -33,9 +33,9 @@ static HANDLE getProcessHandleFromWindowName(const std::string& windowName) {
 }
 #endif
 
-void Injection::inject(const std::string& dllPath, const std::string& windowName) {
+void Injection::inject(const std::string& dllPath, const unsigned long& pid) {
 #ifdef WIN32
-    const HANDLE& processHandle = getProcessHandleFromWindowName(windowName);
+    const HANDLE& processHandle = OpenProcess(PROCESS_ALL_ACCESS, FALSE, pid);
     if (!processHandle)
         throw InjectionException("Process not found");
 
@@ -88,6 +88,8 @@ std::vector<MCInstance> Injection::getMinecraftVersions() {
     std::vector<MCInstance> versions;
 
     HWND window = FindWindowA(nullptr, nullptr);
+    if (!window)
+        throw InjectionException("Window not found");
     while (window) {
         char title[256];
         GetWindowTextA(window, title, 256);
@@ -103,25 +105,9 @@ std::vector<MCInstance> Injection::getMinecraftVersions() {
             MCInstance instance;
             instance.title = titleString;
             DWORD processId;
-            GetWindowThreadProcessId(window, &processId) ?
+            !GetWindowThreadProcessId(window, &processId) ?
                 throw InjectionException("GetWindowThreadProcessId Failed") : 0;
-            instance.pid = static_cast<int>(processId);
-            std::string javawPath{};
-            const HANDLE& proc = OpenProcess(
-            PROCESS_QUERY_INFORMATION,
-            FALSE,
-            instance.pid);
-
-            if (!proc)
-                throw InjectionException("OpenProcess Failed");
-
-            GetProcessImageFileNameA(
-                proc,
-                javawPath.data(),
-                256) == FALSE ?
-                    throw InjectionException("GetProcessImageFileNameA Failed") : 0;
-
-            instance.javawPath = javawPath;
+            instance.pid = processId;
             versions.push_back(instance);
         }
         window = GetWindow(window, GW_HWNDNEXT);

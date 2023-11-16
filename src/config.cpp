@@ -35,6 +35,8 @@ void Config::save() {
 }
 
 std::string Config::get(const std::string&key) {
+    if (!this->m_config.contains(key))
+        return {};
     return this->m_config[key];
 }
 

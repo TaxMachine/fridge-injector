@@ -18,7 +18,7 @@ class GUI {
         GUI();
         void render();
         MCInstance m_version{};
-        std::filesystem::path m_dllPath;
+        std::string m_dllPath{};
         Config m_config = Config("config.txt");
     private:
         void renderMain();
