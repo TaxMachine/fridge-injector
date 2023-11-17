@@ -1,9 +1,7 @@
 //
 // Created by taxis on 2023-11-14.
 //
-#include "utils.hpp"
 
-#include <Windows.h>
 #include <ranges>
 #include <iostream>
 #include <fstream>
@@ -12,6 +10,13 @@
 #include <filesystem>
 
 #include "exceptions.hpp"
+#include "utils.hpp"
+
+#ifdef WIN32
+#include <Windows.h>
+#elif __linux__
+#include <string.h>
+#endif
 
 std::string Utils::openFileDialog(const char* filters) {
 #ifdef WIN32
@@ -31,11 +36,14 @@ std::string Utils::openFileDialog(const char* filters) {
     GetOpenFileName(&ofn);
     return std::string{ofn.lpstrFile};
 #elif __linux__
-    std::string filename;
-    FILE *f = popen("zenity --file-selection --title \"Select your cheat shared library\"", "r");
-    fgets(filename.data(), filename.size(), f);
-    pclose(f);
-    return filename;
+    char path[1024] = {0};
+    FILE* fp = popen("zenity --file-selection --file-filter=*.so --title \"Select your cheat shared library\"", "r");
+    fgets(path, sizeof(path), fp);
+    char* newline = strchr(path, '\n');
+    if (newline != nullptr)
+        *newline = 0;
+    pclose(fp);
+    return {path};
 
 #endif
 }

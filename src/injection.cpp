@@ -14,10 +14,19 @@
     #include <windows.h>
     #include <psapi.h>
 #elif __linux__
-    #include <unistd.h>
-    #include <sys/types.h>
-    #include <sys/wait.h>
-    #include <signal.h>
+#include <fstream>
+#include <signal.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <stdio.h>
+#include <string.h>
+#include "injector.h"
+#endif
+
+#ifdef __linux
+injector_t* injector = nullptr;
+void* handle;
 #endif
 
 #ifdef WIN32
@@ -79,9 +88,27 @@ void Injection::inject(const std::string& dllPath, const unsigned long& pid) {
 
     CloseHandle(processHandle);
 #elif __linux__
-    throw NotImplementedException("Linux is not supported");
+    if (injector != nullptr)
+        throw InjectionException("Already injected");;
+    injector_attach(&injector, (int)pid);
+    if (injector == nullptr)
+        throw InjectionException("Attach failed");
+    if (injector_inject(injector, dllPath.c_str(), &handle)) {
+        injector_detach(injector);
+        throw InjectionException("Injection failed");
+    }
 #endif
 }
+
+#ifdef __linux
+void Injection::uninject() {
+    if (injector == nullptr)
+        throw InjectionException("Not injected");;
+    injector_uninject(injector, handle);
+    injector_detach(injector);
+    injector = nullptr;
+}
+#endif
 
 std::vector<MCInstance> Injection::getMinecraftVersions() {
 #ifdef WIN32
@@ -115,6 +142,42 @@ std::vector<MCInstance> Injection::getMinecraftVersions() {
 
     return versions;
 #elif __linux__
-    throw NotImplementedException("Linux is not supported");
+    std::vector<MCInstance> instances;
+    FILE* fp = popen("ps -e | grep \"\\d+(?= [^: ].+?java)\" -Po", "r");
+
+    size_t length;
+    char* line = nullptr;
+    while (getline(&line, &length, fp) != -1) {
+        char* newline = strchr(line, '\n');
+        if (newline != nullptr)
+            *newline = 0;
+
+        char path[32];
+        snprintf(path, 32, "/proc/%s/cmdline", line);
+
+        std::ifstream file(path, std::ios::binary);
+        if (!file.is_open())
+            continue;
+        char buffer[256];
+        std::string cmdline;
+        while (file.read(buffer, sizeof(buffer)))
+            cmdline += buffer;
+        file.close();
+        if (cmdline.empty())
+            continue;
+
+        std::regex regex("/.minecraft/versions/([0-9]+\\.[0-9]+\\.[0-9]+)/");
+        std::smatch match;
+        if (!std::regex_search(cmdline, match, regex))
+            continue;
+        std::string version = match[1].str();
+        if (std::stoi(Utils::split(version, ".")[1]) <= 12)
+            continue;
+
+        instances.push_back({version, (unsigned long)(atol(line))});
+    }
+    pclose(fp);
+    free(line);
+    return instances;
 #endif
 }

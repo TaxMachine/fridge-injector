@@ -25,7 +25,7 @@ class GUI {
         GLFWwindow* m_window{};
         std::vector<MCInstance> m_minecraftVersions;
         bool m_alreadySeen = false;
-        const char* m_dllhash = "Not Available";
+        std::string m_dllhash = "Not Available";
         unsigned long long m_dllsize = 0.0L;
 
         float m_titlebarHeight = 0;

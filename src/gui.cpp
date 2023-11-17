@@ -34,17 +34,31 @@ static void glfw_error_callback(int error, const char* description) {
     fprintf(stderr, "GLFW Error %d: %s\n", error, description);
 }
 
+#ifdef __linux__
+static void MessageBox(const char* type, const char* message, const char* title) {
+    char cmd[1024];
+    snprintf(cmd, 1024, R"(zenity --%s --text="%s" --title="%s")", type, message, title);
+    FILE* fp = popen(cmd, "r");
+    pclose(fp);
+}
+#endif
+
+
 static void ErrorPopup(const char* message) {
 #ifdef WIN32
     MessageBoxA(nullptr, message, "Error", MB_OK | MB_ICONERROR);
 #elif __linux__
-    FILE* f = popen(("zenity --error --title=\"Error\" --text=\"" + std::string(message) + "\"").c_str(), "r");
+    MessageBox("error", message, "Error");
 #endif
 }
 
 GUI::GUI() {
     this->m_dllPath = this->m_config.get("dllPath");
     this->m_minecraftVersions = Injection::getMinecraftVersions();
+    if (this->m_minecraftVersions.empty())
+        this->m_version.pid = 0;
+    else
+        this->m_version = m_minecraftVersions[0];
     glfwInit();
 }
 
@@ -100,11 +114,12 @@ void GUI::renderMain() {
         ImGui::Text("Filename: %s", split[split.size() - 1].c_str());
         if (!this->m_dllPath.empty()) {
             if (!this->m_alreadySeen) {
-                this->m_dllhash = SHA1::from_file(this->m_dllPath).c_str();
+                this->m_dllhash = SHA1::from_file(this->m_dllPath);
                 this->m_dllsize = Utils::getFileSize(this->m_dllPath) / 1024;
                 this->m_alreadySeen = true;
             }
-            ImGui::Text("Sha1: %s", this->m_dllhash);
+            std::string b = SHA1::from_file(this->m_dllPath);
+            ImGui::Text("Sha1: %s", this->m_dllhash.c_str());
             ImGui::Text("Size: %llu kb", this->m_dllsize);
         }
     } catch (std::length_error& e) {
@@ -117,7 +132,9 @@ void GUI::renderMain() {
     ImGui::Text("Minecraft version");
     ImGui::BeginGroup();
 
-    if (ImGui::BeginCombo("##version", "Select a DLL")) {
+    std::string preview = this->m_version.pid ? (this->m_version.title + " pid: " + std::to_string(this->m_version.pid)) : "Select a DLL";
+
+    if (ImGui::BeginCombo("##version", preview.c_str())) {
         if (this->m_minecraftVersions.empty()) {
             ImGui::Selectable("No Minecraft windows found");
         }
@@ -134,6 +151,8 @@ void GUI::renderMain() {
     ImGui::SameLine();
     if (ImGui::Button("Refresh")) {
         this->m_minecraftVersions = Injection::getMinecraftVersions();
+        if (!this->m_minecraftVersions.empty())
+            this->m_version = m_minecraftVersions[0];
     }
 
     ImGui::EndGroup();
@@ -149,17 +168,12 @@ void GUI::renderMain() {
             ErrorPopup("No Minecraft version selected");
         } else {
             try {
-                bool injected = false;
-                while (!injected) {
-                    try {
-                        Injection::inject(this->m_dllPath, this->m_version.pid);
-                        injected = true;
-                        MessageBox(nullptr, "Injected !", "Success", MB_OK | MB_ICONINFORMATION);
-                    } catch (InjectionException& e) {
-                        ErrorPopup(e.what());
-                        std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-                    }
-                }
+                Injection::inject(this->m_dllPath, this->m_version.pid);
+#ifdef WIN32
+                MessageBox(nullptr, "Injected !", "Success", MB_OK | MB_ICONINFORMATION);
+#elif __linux__
+                MessageBox("info", "Injected !", "Success");
+#endif
             } catch (InjectionException& e) {
                 ErrorPopup(e.what());
             } catch (NotImplementedException& e) {
@@ -167,6 +181,16 @@ void GUI::renderMain() {
             }
         }
     }
+#ifdef __linux__
+    ImGui::SetCursorPosX((ImGui::GetWindowSize().x - ImGui::CalcTextSize("Uninject").x) * 0.5f);
+    if (ImGui::Button("Uninject"))
+        try {
+            Injection::uninject();
+        } catch (InjectionException& e) {
+            ErrorPopup(e.what());
+        }
+
+#endif
     ImGui::EndGroup();
     ImGui::PopStyleVar(2);
     ImGui::End();

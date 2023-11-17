@@ -15,6 +15,9 @@ struct MCInstance {
 
 namespace Injection {
     void inject(const std::string& dllPath, const unsigned long& pid);
+#ifdef __linux
+    void uninject();
+#endif
     std::vector<MCInstance> getMinecraftVersions();
 }
 
