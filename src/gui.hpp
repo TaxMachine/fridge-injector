@@ -12,6 +12,7 @@
 #include "GLFW/glfw3.h"
 #include "config.hpp"
 #include "injection.hpp"
+#include "pipeserver.hpp"
 
 class GUI {
     public:
@@ -19,7 +20,7 @@ class GUI {
         void render();
         MCInstance m_version{};
         std::string m_dllPath{};
-        Config m_config = Config("config.txt");
+        Config* m_config{};
     private:
         void renderMain();
         GLFWwindow* m_window{};
@@ -27,7 +28,7 @@ class GUI {
         bool m_alreadySeen = false;
         std::string m_dllhash = "Not Available";
         unsigned long long m_dllsize = 0.0L;
-
+        PipeServer* m_pipeServer = nullptr;
         float m_titlebarHeight = 0;
 };
 

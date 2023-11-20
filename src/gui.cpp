@@ -12,6 +12,7 @@
 #include "exceptions.hpp"
 #include "utils.hpp"
 #include "sha1.hpp"
+#include "console.hpp"
 
 #include "backends/imgui_impl_opengl3.h"
 #include "backends/imgui_impl_glfw.h"
@@ -29,6 +30,7 @@
     #include <signal.h>
 #endif
 
+#define PIPE_NAME "fridge"
 
 static void glfw_error_callback(int error, const char* description) {
     fprintf(stderr, "GLFW Error %d: %s\n", error, description);
@@ -52,8 +54,19 @@ static void ErrorPopup(const char* message) {
 #endif
 }
 
+static void runNamedPipe(PipeServer*& pipe_server) {
+    try {
+        pipe_server = new PipeServer(PIPE_NAME);
+    } catch (PipeException& e) {
+        ErrorPopup(e.what());
+    }
+}
+
 GUI::GUI() {
-    this->m_dllPath = this->m_config.get("dllPath");
+    std::thread t(runNamedPipe, std::ref(this->m_pipeServer));
+    t.detach();
+    this->m_config = new Config("config.txt");
+    this->m_dllPath = this->m_config->get("dllPath");
     this->m_minecraftVersions = Injection::getMinecraftVersions();
     if (this->m_minecraftVersions.empty())
         this->m_version.pid = 0;
@@ -99,7 +112,7 @@ void GUI::renderMain() {
                 ErrorPopup("No shared library selected");
             else {
                 this->m_dllPath = libpath;
-                this->m_config.set("dllPath", this->m_dllPath);
+                this->m_config->set("dllPath", this->m_dllPath);
                 this->m_alreadySeen = false;
             }
         } catch (std::length_error& e) {
@@ -109,7 +122,7 @@ void GUI::renderMain() {
     ImGui::SameLine();
     ImGui::Dummy(ImVec2(25.0f, 0.0f));
     try {
-        const std::string& pathdll = !this->m_config.get("dllPath").empty() ? this->m_config.get("dllPath").c_str() : "Not selected";
+        const std::string& pathdll = !this->m_config->get("dllPath").empty() ? this->m_config->get("dllPath").c_str() : "Not selected";
         const std::vector<std::string>& split = Utils::split(pathdll, SEPARATOR);
         ImGui::Text("Filename: %s", split[split.size() - 1].c_str());
         if (!this->m_dllPath.empty()) {
@@ -137,10 +150,12 @@ void GUI::renderMain() {
     if (ImGui::BeginCombo("##version", preview.c_str())) {
         if (this->m_minecraftVersions.empty()) {
             ImGui::Selectable("No Minecraft windows found");
-        }
-        for (const MCInstance &version: this->m_minecraftVersions) {
-            if (ImGui::Selectable((version.title + " pid: " + std::to_string(version.pid)).c_str())) {
-                this->m_version = version;
+        } else {
+            for (const MCInstance &version: this->m_minecraftVersions) {
+                if (ImGui::Selectable((version.title + " pid: " + std::to_string(version.pid)).c_str())) {
+                    preview = version.title + " pid: " + std::to_string(version.pid);
+                    this->m_version = version;
+                }
             }
         }
         ImGui::EndCombo();
@@ -192,6 +207,20 @@ void GUI::renderMain() {
 
 #endif
     ImGui::EndGroup();
+    ImGui::SetCursorPosX((ImGui::GetWindowSize().x - ImGui::CalcTextSize("Refresh console").x) * 0.5f);
+    if (ImGui::Button("Refresh console")) {
+        try {
+            this->m_pipeServer = new PipeServer(PIPE_NAME);
+        } catch (PipeException& e) {
+            ErrorPopup(e.what());
+        }
+    }
+
+    if (this->m_pipeServer != nullptr) {
+        Console* console = new Console(this->m_pipeServer);
+        console->render();
+    }
+
     ImGui::PopStyleVar(2);
     ImGui::End();
 }
@@ -201,7 +230,7 @@ void GUI::render() {
     glfwWindowHint(GLFW_TRANSPARENT_FRAMEBUFFER, GLFW_TRUE);
     if (!glfwInit())
         return;
-    m_window = glfwCreateWindow(700, 600, "fridge injector", nullptr, nullptr);
+    m_window = glfwCreateWindow(750, 800, "fridge injector", nullptr, nullptr);
     if (m_window == nullptr)
         return;
     GLFWimage images[1];

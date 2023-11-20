@@ -75,7 +75,7 @@ void Injection::inject(const std::string& dllPath, const unsigned long& pid) {
         processHandle,
         nullptr,
         0,
-        std::any_cast<LPTHREAD_START_ROUTINE>(loadLibraryAddress),
+        (LPTHREAD_START_ROUTINE)loadLibraryAddress,
         dllPathAddress,
         0,
         nullptr);
