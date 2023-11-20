@@ -7,10 +7,9 @@
 #include <ctime>
 #include <thread>
 
-#include "color.hpp"
-
+#include "../utils/color.hpp"
 #include "imgui.h"
-#include "json.hpp"
+#include "../utils/json.hpp"
 
 Console::Console(PipeServer* pipeServer) {
     this->m_scrollToBottom = false;

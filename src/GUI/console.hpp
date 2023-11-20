@@ -7,7 +7,7 @@
 
 #include <string>
 
-#include "pipeserver.hpp"
+#include "../injection/pipeserver.hpp"
 
 class Console {
     public:

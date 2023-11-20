@@ -8,10 +8,10 @@
 #include <filesystem>
 
 #include "imgui.h"
-#include "injection.hpp"
-#include "exceptions.hpp"
-#include "utils.hpp"
-#include "sha1.hpp"
+#include "../injection/injection.hpp"
+#include "../utils/exceptions.hpp"
+#include "../utils/utils.hpp"
+#include "../utils/sha1.hpp"
 #include "console.hpp"
 
 #include "backends/imgui_impl_opengl3.h"

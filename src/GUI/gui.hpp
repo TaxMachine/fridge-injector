@@ -10,9 +10,9 @@
 #include <filesystem>
 
 #include "GLFW/glfw3.h"
-#include "config.hpp"
-#include "injection.hpp"
-#include "pipeserver.hpp"
+#include "../utils/config.hpp"
+#include "../injection/injection.hpp"
+#include "../injection/pipeserver.hpp"
 
 class GUI {
     public:

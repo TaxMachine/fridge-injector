@@ -6,8 +6,6 @@
 #define FRIDGE_INJECTOR_CONFIG_HPP
 
 #include <string>
-#include <fstream>
-#include <sstream>
 #include <map>
 
 class Config {

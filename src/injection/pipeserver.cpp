@@ -4,7 +4,7 @@
 
 #include "pipeserver.hpp"
 
-#include "json.hpp"
+#include "../utils/json.hpp"
 
 PipeServer::PipeServer(const std::string& pipeName) {
     m_pipeName = "\\\\.\\pipe\\" + pipeName;

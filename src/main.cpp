@@ -1,6 +1,6 @@
 #include <iostream>
 
-#include "gui.hpp"
+#include "GUI/gui.hpp"
 
 int main() {
     GUI gui;
